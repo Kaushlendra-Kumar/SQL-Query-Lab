@@ -1,0 +1,49 @@
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/600.css';
+@import '@xyflow/react/dist/style.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body {
+  @apply bg-ink text-chalk font-sans text-base antialiased;
+  font-feature-settings: 'tnum' 1;
+}
+:focus-visible { outline: 2px solid #5FB8E8; outline-offset: 2px; border-radius: 3px; }
+::selection { background: #3A4A6A; }
+
+/* Scrollbars that belong to the dark theme */
+* { scrollbar-width: thin; scrollbar-color: #2E3A52 transparent; }
+
+@layer components {
+  .panel { @apply bg-slab border border-rule rounded-md; }
+  .btn {
+    @apply inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium border border-rule
+           text-chalk bg-slab hover:bg-[#243049] disabled:opacity-40 disabled:cursor-not-allowed transition-colors;
+  }
+  .btn-primary { @apply bg-[#2E5C86] border-[#3B6E9C] hover:bg-[#35699A]; }
+  .btn-ghost { @apply border-transparent bg-transparent hover:bg-slab; }
+  .input {
+    @apply bg-well border border-rule rounded px-2 py-1 text-sm text-chalk placeholder:text-haze/60 focus:border-join outline-none;
+  }
+  .label { @apply text-xs text-haze; }
+  .code { @apply font-mono text-[0.8rem]; }
+  .tab { @apply px-3 py-1.5 text-sm text-haze border-b-2 border-transparent hover:text-chalk; }
+  .tab-active { @apply text-chalk border-join; }
+}
+
+/* React Flow, dark */
+.react-flow { --xy-background-color: transparent; }
+.react-flow__attribution { background: transparent !important; }
+.react-flow__attribution a { color: #4B5770 !important; }
+.react-flow__controls button { background: #1C2433; border-color: #2A3448; fill: #DDE4EF; }
+.react-flow__controls button:hover { background: #243049; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

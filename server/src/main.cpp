@@ -183,7 +183,12 @@ int main(int argc, char** argv) {
     httplib::Server svr;
     gServer = &svr;
     svr.set_payload_max_length(kMaxBodyBytes);
-    svr.new_task_queue = [] { return new httplib::ThreadPool(4); };
+    // Browsers keep several idle keep-alive connections open, and each one
+    // occupies a worker thread; keep the pool generous and idle timeouts short
+    // so API calls never queue behind idle sockets. Queries themselves are
+    // serialized by the engine.
+    svr.new_task_queue = [] { return new httplib::ThreadPool(16); };
+    svr.set_keep_alive_timeout(2);
 
     // CORS: only for the Vite dev server (or an explicitly allowed origin).
     svr.set_post_routing_handler([allowOrigin](const httplib::Request& req, httplib::Response& res) {

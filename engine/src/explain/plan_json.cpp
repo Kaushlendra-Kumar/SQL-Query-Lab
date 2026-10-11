@@ -218,6 +218,7 @@ json physicalToJson(const planner::PhysicalNode& n, const std::map<int, executio
         if (it != stats->end()) {
             const auto& s = it->second;
             out["actual"] = {{"executed", s.opened},
+                             {"completed", s.exhausted},
                              {"rowsIn", s.rowsIn},
                              {"rowsOut", s.rowsOut},
                              {"rowsFiltered", s.rowsFiltered},

@@ -169,6 +169,13 @@ json explainExecution(const InsightInput& in) {
     });
 
     // 4. Index / access-path decisions and 5. operator choices.
+    auto physicalIdFor = [&](int logicalId) {
+        int found = 0;
+        postOrder(plan, [&](const PhysicalNode& n) {
+            if (n.logicalId == logicalId) found = n.id;
+        });
+        return found;
+    };
     if (in.trace) {
         for (const auto& step : *in.trace) {
             if (step.phase != "physical") continue;
@@ -180,9 +187,9 @@ json explainExecution(const InsightInput& in) {
                     considered += (considered.empty() ? "" : "; ") + a.name + (a.cost > 0 ? " (est. cost " + num(a.cost, 1) + ")" : " — " + a.detail);
                 }
                 if (!considered.empty()) t += " Considered: " + considered + ".";
-                fact("indexes", t, step.nodeIds.empty() ? 0 : step.nodeIds[0]);
+                fact("indexes", t, step.nodeIds.empty() ? 0 : physicalIdFor(step.nodeIds[0]));
             } else {
-                fact("operators", t, step.nodeIds.empty() ? 0 : step.nodeIds[0]);
+                fact("operators", t, step.nodeIds.empty() ? 0 : physicalIdFor(step.nodeIds[0]));
             }
         }
     }
