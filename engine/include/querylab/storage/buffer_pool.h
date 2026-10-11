@@ -100,6 +100,11 @@ public:
 
     PageGuard fetch(PageId id);
     PageGuard newPage(PageId& outId);
+    /// Copies a page for inspection without touching the cache: no stats,
+    /// no LRU update, and an uncached page is read from the store directly
+    /// instead of being loaded into a frame. Used by the storage explorer so
+    /// looking at pages never changes the outcome of an experiment.
+    void peek(PageId id, Page& out);
 
     void flushAll();
     /// Writes back and drops every cached page ("cold cache"). Requires that

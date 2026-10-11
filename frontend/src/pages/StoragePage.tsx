@@ -27,7 +27,8 @@ function PageMap({ table, onPick, selected }: { table: StorageInfo['tables'][num
       </div>
       <p className="mt-2 text-xs text-haze">
         Each square is a 4 KB page; the amber fill is how full it is. A blue outline means the page is currently in the buffer pool.
-        {table.pageCount > table.pages.length ? ` Showing the first ${table.pages.length} of ${fmtInt(table.pageCount)} pages.` : ''}
+        {table.pageCount > table.pages.length ? ` Showing the first ${table.pages.length} of ${fmtInt(table.pageCount)} pages.` : ''} Inspecting pages here
+        reads them without loading them into the buffer pool, so it never changes an experiment.
       </p>
     </div>
   );
@@ -41,7 +42,7 @@ function PageView({ page, columns }: { page: PageDetail; columns: string[] }) {
         <Stat label="Page id" value={page.pageId} />
         <Stat label="Slots" value={`${page.slotCount} (${page.liveRows} live)`} />
         <Stat label="Used" value={`${fmtBytes(used)} of 4 KB`} />
-        <Stat label="Was cached" value={page.wasCached ? 'yes' : 'no, loaded now'} />
+        <Stat label="In buffer pool" value={page.wasCached ? 'yes' : 'no'} />
       </div>
       <div className="h-3 w-full rounded-sm bg-well border border-rule flex overflow-hidden" aria-hidden>
         <div className="bg-join/60" style={{ width: `${((16 + page.slotCount * 4) / page.pageSize) * 100}%` }} title="Header and slot directory" />
@@ -199,7 +200,6 @@ export function StoragePage() {
             onPick={async (i) => {
               try {
                 setPage({ index: i, detail: await api.page(t.name, i) });
-                void load();
               } catch (e) {
                 setError((e as Error).message);
               }

@@ -383,6 +383,13 @@ protected:
 
 // ---- joins --------------------------------------------------------------------------
 
+/// Writes l ++ r into `out`, reusing its capacity (no allocation once warm).
+void concatInto(Row& out, const Row& l, const Row& r) {
+    out.clear();
+    out.insert(out.end(), l.begin(), l.end());
+    out.insert(out.end(), r.begin(), r.end());
+}
+
 Row concat(const Row& l, const Row& r) {
     Row out;
     out.reserve(l.size() + r.size());
@@ -418,10 +425,9 @@ protected:
             }
             while (pos_ < inner_.size()) {
                 if ((++comparisons_ & 4095) == 0) ctx_.check();
-                Row candidate = concat(outer_, inner_[pos_++]);
-                if (!node_.predicate || planner::isTrue(planner::evaluate(*node_.predicate, candidate))) {
+                concatInto(out, outer_, inner_[pos_++]);
+                if (!node_.predicate || planner::isTrue(planner::evaluate(*node_.predicate, out))) {
                     matched_ = true;
-                    out = std::move(candidate);
                     return true;
                 }
                 ++st_.rowsFiltered;
@@ -470,17 +476,16 @@ protected:
                 matched_ = false;
                 bucket_ = nullptr;
                 pos_ = 0;
-                Row key = keyOf(node_.leftKeys, probe_);
-                if (!hasNull(key)) {
-                    auto it = table_.find(key);
+                keyInto(node_.leftKeys, probe_, probeKey_);
+                if (!hasNull(probeKey_)) {
+                    auto it = table_.find(probeKey_);
                     if (it != table_.end()) bucket_ = &it->second;
                 }
             }
             while (bucket_ && pos_ < bucket_->size()) {
-                Row candidate = concat(probe_, (*bucket_)[pos_++]);
-                if (!node_.predicate || planner::isTrue(planner::evaluate(*node_.predicate, candidate))) {
+                concatInto(out, probe_, (*bucket_)[pos_++]);
+                if (!node_.predicate || planner::isTrue(planner::evaluate(*node_.predicate, out))) {
                     matched_ = true;
-                    out = std::move(candidate);
                     return true;
                 }
                 ++st_.rowsFiltered;
@@ -494,6 +499,10 @@ protected:
     }
 
 private:
+    static void keyInto(const std::vector<planner::BoundExprPtr>& keys, const Row& r, Row& k) {
+        k.clear();
+        for (const auto& e : keys) k.push_back(planner::evaluate(*e, r));
+    }
     static Row keyOf(const std::vector<planner::BoundExprPtr>& keys, const Row& r) {
         Row k;
         k.reserve(keys.size());
@@ -505,7 +514,7 @@ private:
     }
 
     std::unordered_map<Row, std::vector<Row>, RowHash, RowEq> table_;
-    Row probe_;
+    Row probe_, probeKey_;
     bool haveProbe_ = false, matched_ = false;
     const std::vector<Row>* bucket_ = nullptr;
     std::size_t pos_ = 0, rightWidth_ = 0;
@@ -571,16 +580,16 @@ protected:
     void doOpen() override {
         Operator::doOpen();
         const auto& aggs = node_.aggregates;
-        Row r;
+        Row r, key;
         while (children_[0]->next(r)) {
             ++st_.buildRows;
-            Row key;
+            key.clear();
             for (const auto& g : node_.groupBy) key.push_back(planner::evaluate(*g, r));
             auto it = index_.find(key);
             if (it == index_.end()) {
                 ctx_.addMemory(rowBytes(key) + aggs.size() * sizeof(AggState), st_);
                 it = index_.emplace(key, groups_.size()).first;
-                groups_.push_back({std::move(key), std::vector<AggState>(aggs.size())});
+                groups_.push_back({key, std::vector<AggState>(aggs.size())});
             }
             auto& states = groups_[it->second].second;
             for (std::size_t i = 0; i < aggs.size(); ++i) accumulate(aggs[i], states[i], r);

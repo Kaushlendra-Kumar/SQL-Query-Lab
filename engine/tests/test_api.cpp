@@ -253,8 +253,16 @@ TEST_CASE("inspection endpoints") {
     auto idx = db->indexDetail("idx_age");
     CHECK(idx["valid"] == true);
     CHECK(idx["entries"] == 5);
+    db->updateSettings({{"bufferPoolPages", 8}});  // empties the pool
+    auto before = db->storageJson()["bufferPool"];
     auto storage = db->storageJson();
+    (void)db->pageDetail("users", 0);
+    (void)db->tableRows("users", 0, 10);
+    auto after = db->storageJson()["bufferPool"];
     CHECK(storage["tables"][0]["pageCount"] == 1);
+    // Inspecting storage must not change buffer-pool contents or statistics.
+    CHECK(before == after);
+    CHECK(after["cached"] == 0);
     auto page = db->pageDetail("users", 0);
     CHECK(page["liveRows"] == 5);
     CHECK_THROWS_AS(db->pageDetail("users", 9), querylab::QueryError);

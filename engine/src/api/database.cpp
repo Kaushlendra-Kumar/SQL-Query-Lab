@@ -656,8 +656,8 @@ json Database::tableRows(const std::string& name, std::size_t offset, std::size_
     std::size_t seen = 0;
     for (auto pid : t->heap->pages()) {
         if (rows.size() >= limit) break;
-        auto g = pool_->fetch(pid);
-        const auto& p = g.page();
+        storage::Page p;
+        pool_->peek(pid, p);
         for (std::uint16_t s = 0; s < p.slotCount() && rows.size() < limit; ++s) {
             if (!p.isLive(s)) continue;
             if (seen++ < offset) continue;
@@ -707,13 +707,14 @@ json Database::storageJson() {
         for (auto pid : t->heap->pages()) {
             if (pool_->isCached(pid)) ++cached;
         }
-        // Sample page fill (first 64 pages) without disturbing statistics too much.
+        // Page fill for the first 512 pages, read with peek() so inspecting
+        // storage never changes buffer-pool contents or statistics.
         json pages = json::array();
         const auto& pids = t->heap->pages();
-        for (std::size_t i = 0; i < pids.size() && i < 64; ++i) {
+        for (std::size_t i = 0; i < pids.size() && i < 512; ++i) {
             const bool wasCached = pool_->isCached(pids[i]);
-            auto g = pool_->fetch(pids[i]);
-            const auto& p = g.page();
+            storage::Page p;
+            pool_->peek(pids[i], p);
             const std::size_t live = p.liveCount();
             used += storage::kPageSize - p.freeSpace();
             dead += p.slotCount() - live;
@@ -721,7 +722,7 @@ json Database::storageJson() {
         }
         tables.push_back({{"name", t->name}, {"pageCount", pids.size()}, {"rowCount", t->rowCount()},
                           {"rowsPerPage", pids.empty() ? 0.0 : static_cast<double>(t->rowCount()) / static_cast<double>(pids.size())},
-                          {"cachedPages", cached}, {"pages", pages}, {"deadSlotsInSample", dead}});
+                          {"cachedPages", cached}, {"pages", pages}, {"deadSlotsInSample", dead}, {"bytesUsedInSample", used}});
     }
     const auto& s = pool_->stats();
     return json{{"mode", persistent() ? "file" : "memory"},
@@ -744,8 +745,8 @@ json Database::pageDetail(const std::string& table, std::size_t pageIndex) {
     if (pageIndex >= t->heap->pages().size()) throw QueryError(ErrorStage::Api, "page index out of range");
     const auto pid = t->heap->pages()[pageIndex];
     const bool wasCached = pool_->isCached(pid);
-    auto g = pool_->fetch(pid);
-    const auto& p = g.page();
+    storage::Page p;
+    pool_->peek(pid, p);  // inspection must not disturb the buffer pool
     json slots = json::array();
     for (std::uint16_t s = 0; s < p.slotCount(); ++s) {
         json slot{{"slot", s}, {"live", p.isLive(s)}};

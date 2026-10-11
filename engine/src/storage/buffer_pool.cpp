@@ -190,6 +190,15 @@ PageGuard BufferPool::newPage(PageId& outId) {
     return PageGuard(this, f, &fr.page);
 }
 
+void BufferPool::peek(PageId id, Page& out) {
+    auto it = table_.find(id);
+    if (it != table_.end()) {
+        out = frames_[it->second]->page;
+        return;
+    }
+    store_.read(id, out);
+}
+
 void BufferPool::unpin(std::size_t f) {
     Frame& fr = *frames_[f];
     if (fr.pins <= 0) throw std::logic_error("unpin of unpinned frame");
