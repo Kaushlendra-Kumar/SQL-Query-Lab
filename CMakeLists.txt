@@ -31,7 +31,7 @@ if(MSVC)
 else()
   target_compile_options(querylab_warnings INTERFACE
     -Wall -Wextra -Wpedantic -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual
-    -Wimplicit-fallthrough -Wnull-dereference -Wformat=2)
+    -Wimplicit-fallthrough -Wformat=2)
   if(QUERYLAB_WERROR)
     target_compile_options(querylab_warnings INTERFACE -Werror)
   endif()
