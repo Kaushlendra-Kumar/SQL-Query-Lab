@@ -11,7 +11,7 @@ SQL text ─▶ Lexer ─▶ Parser ─▶ Binder ─▶ Optimizer ─▶ Physic
                                plan        cost model     costed               slotted pages + B+ trees
 ```
 
-**Try it live:** https://kaushlendra-kumar.github.io/SQL-Query-Lab/ (no install; the engine runs in your browser).
+**Try it live:** https://sql-query-lab.combio-worker.workers.dev (no install; the engine runs in your browser).
 
 ## Quick start
 
@@ -62,7 +62,7 @@ docker run --rm -v "$PWD":/src -w /src emscripten/emsdk:4.0.10 scripts/build-was
 cd frontend && npm run build          # dist/ is a static site; VITE_BACKEND=server targets the C++ server instead
 ```
 
-Each visitor gets their own in-memory database. Browsers coarsen `performance.now()` (about 0.1 ms in Chrome), so timings are less precise than the native server's; row counts, plans and page reads are identical. File persistence (`--db`) is not available in the browser. Pushing to `main` builds and publishes the site through GitHub Actions (`.github/workflows/deploy.yml`).
+Each visitor gets their own in-memory database. Browsers coarsen `performance.now()` (about 0.1 ms in Chrome), so timings are less precise than the native server's; row counts, plans and page reads are identical. File persistence (`--db`) is not available in the browser. Pushing to `main` builds and publishes the site to GitHub Pages through GitHub Actions (`.github/workflows/deploy.yml`, once Pages is enabled with source "GitHub Actions"). It can also be published to Cloudflare from a local build with `npx wrangler deploy` (`wrangler.jsonc`).
 
 ## What you can do
 

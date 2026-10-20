@@ -1,0 +1,10 @@
+// Cloudflare Workers static-assets deploy of the browser build (no server code).
+// Build first (scripts/build-wasm.sh, then npm run build in frontend/), then:
+//   npx wrangler deploy
+{
+  "name": "sql-query-lab",
+  "compatibility_date": "2026-10-19",
+  "assets": {
+    "directory": "./frontend/dist"
+  }
+}

@@ -4,3 +4,4 @@ frontend/dist/
 *.qldb
 .cache/
 frontend/public/wasm/
+.wrangler/
