@@ -10,4 +10,4 @@ SERVER_PID=$!
 trap 'kill $SERVER_PID 2>/dev/null' EXIT
 cd frontend
 [ -d node_modules ] || npm ci --no-audit --no-fund
-npm run dev
+VITE_BACKEND=server npm run dev

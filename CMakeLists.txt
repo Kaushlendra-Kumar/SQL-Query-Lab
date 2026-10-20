@@ -42,6 +42,14 @@ if(QUERYLAB_SANITIZE AND NOT MSVC)
   add_link_options(-fsanitize=address,undefined)
 endif()
 
+if(EMSCRIPTEN)
+  # Browser build: engine + wasm entry point (no sockets). The engine tests can
+  # still be built (-DQUERYLAB_BUILD_TESTS=ON) and run under Node.
+  set(QUERYLAB_BUILD_SERVER OFF CACHE BOOL "" FORCE)
+  add_compile_options(-fwasm-exceptions)
+  add_link_options(-fwasm-exceptions -sALLOW_MEMORY_GROWTH=1 -sMAXIMUM_MEMORY=4GB -sSTACK_SIZE=4MB)
+endif()
+
 find_package(Threads REQUIRED)
 
 if(QUERYLAB_BUILD_TESTS)
@@ -51,4 +59,7 @@ endif()
 add_subdirectory(engine)
 if(QUERYLAB_BUILD_SERVER)
   add_subdirectory(server)
+endif()
+if(EMSCRIPTEN)
+  add_subdirectory(wasm)
 endif()

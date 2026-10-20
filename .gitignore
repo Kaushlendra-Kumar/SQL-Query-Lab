@@ -3,3 +3,4 @@ node_modules/
 frontend/dist/
 *.qldb
 .cache/
+frontend/public/wasm/

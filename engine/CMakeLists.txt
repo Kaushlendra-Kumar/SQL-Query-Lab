@@ -5,8 +5,10 @@ target_include_directories(querylab_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/in
 target_link_libraries(querylab_engine PUBLIC querylab_thirdparty Threads::Threads PRIVATE querylab_warnings)
 
 # Standalone command-line shell (no frontend / server needed).
-add_executable(querylab_cli tools/querylab_cli.cpp)
-target_link_libraries(querylab_cli PRIVATE querylab_engine querylab_warnings)
+if(NOT EMSCRIPTEN)
+  add_executable(querylab_cli tools/querylab_cli.cpp)
+  target_link_libraries(querylab_cli PRIVATE querylab_engine querylab_warnings)
+endif()
 
 if(QUERYLAB_BUILD_TESTS)
   enable_testing()

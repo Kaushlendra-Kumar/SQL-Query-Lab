@@ -11,6 +11,8 @@ SQL text ─▶ Lexer ─▶ Parser ─▶ Binder ─▶ Optimizer ─▶ Physic
                                plan        cost model     costed               slotted pages + B+ trees
 ```
 
+**Try it live:** https://kaushlendra-kumar.github.io/SQL-Query-Lab/ (no install; the engine runs in your browser).
+
 ## Quick start
 
 ### Linux / macOS
@@ -50,6 +52,17 @@ build/engine/querylab_cli          # interactive; type .help
 ### Development mode
 
 `scripts/dev.sh` runs the C++ server on :8080 and the Vite dev server on :5173 with hot reload (`/api` is proxied).
+
+### In the browser (WebAssembly)
+
+The live site has no server. `scripts/build-wasm.sh` compiles the engine with Emscripten into `frontend/public/wasm/`, and the frontend runs it in a Web Worker behind the same `/api/v1` routes the HTTP server exposes (`wasm/src/querylab_wasm.cpp`). Without emsdk installed, build it in Docker:
+
+```bash
+docker run --rm -v "$PWD":/src -w /src emscripten/emsdk:4.0.10 scripts/build-wasm.sh
+cd frontend && npm run build          # dist/ is a static site; VITE_BACKEND=server targets the C++ server instead
+```
+
+Each visitor gets their own in-memory database. Browsers coarsen `performance.now()` (about 0.1 ms in Chrome), so timings are less precise than the native server's; row counts, plans and page reads are identical. File persistence (`--db`) is not available in the browser. Pushing to `main` builds and publishes the site through GitHub Actions (`.github/workflows/deploy.yml`).
 
 ## What you can do
 
@@ -101,6 +114,7 @@ engine/      C++ engine (library + CLI + tests)
   src/...    one directory per module
   tests/     doctest suites; tests/differential/ compares with SQLite
 server/      HTTP server (cpp-httplib) exposing /api/v1
+wasm/        the same /api/v1 routes for the browser build (Emscripten)
 frontend/    React + TypeScript + Vite + Tailwind + React Flow + Monaco + Recharts
 third_party/ vendored single headers: cpp-httplib, nlohmann/json, doctest (licences included)
 docs/        architecture, SQL dialect, optimizer and cost model, API, benchmarks

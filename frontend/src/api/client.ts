@@ -28,27 +28,67 @@ export class RequestError extends Error {
   }
 }
 
-async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+/** A transport returns the HTTP status and the JSON response text. */
+type Transport = (method: string, path: string, body: string | undefined, signal?: AbortSignal) => Promise<{ status: number; text: string }>;
+
+/** The C++ HTTP server (scripts/start.sh, or scripts/dev.sh with VITE_BACKEND=server). */
+const serverTransport: Transport = async (method, path, body, signal) => {
   let res: Response;
   try {
     res = await fetch(BASE + path, {
       method,
       headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body,
       signal,
     });
   } catch (e) {
     if ((e as Error).name === 'AbortError') throw e;
     throw new RequestError('Cannot reach the QueryLab server. Start it with scripts/start.sh (or querylab_server) and reload.', 0);
   }
-  const text = await res.text();
+  return { status: res.status, text: await res.text() };
+};
+
+/** The engine compiled to WebAssembly, running in a Web Worker (see engine.worker.ts). */
+function workerTransport(): Transport {
+  let worker: Worker | null = null;
+  let nextId = 0;
+  const pending = new Map<number, { resolve: (r: { status: number; text: string }) => void; reject: (e: Error) => void }>();
+  const start = () => {
+    const w = new Worker(new URL('./engine.worker.ts', import.meta.url), { type: 'module' });
+    w.onmessage = (e: MessageEvent) => {
+      const { id, status, body, error } = e.data;
+      const p = pending.get(id);
+      if (!p) return;
+      pending.delete(id);
+      if (error !== undefined) p.reject(new RequestError(`The in-browser engine failed: ${error}`, 0));
+      else p.resolve({ status, text: body });
+    };
+    w.postMessage({ init: new URL('wasm/querylab.js', document.baseURI).href });
+    return w;
+  };
+  return (method, path, body, signal) =>
+    new Promise((resolve, reject) => {
+      worker ??= start();
+      const id = nextId++;
+      pending.set(id, { resolve, reject });
+      signal?.addEventListener('abort', () => {
+        if (pending.delete(id)) reject(new DOMException('Aborted', 'AbortError'));
+      });
+      worker.postMessage({ id, method, path, body });
+    });
+}
+
+const transport: Transport = import.meta.env.VITE_BACKEND === 'server' ? serverTransport : workerTransport();
+
+async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  const res = await transport(method, path, body !== undefined ? JSON.stringify(body) : undefined, signal);
   let data: unknown = null;
   try {
-    data = text ? JSON.parse(text) : null;
+    data = res.text ? JSON.parse(res.text) : null;
   } catch {
     throw new RequestError(`The server returned an unreadable response (HTTP ${res.status}).`, res.status);
   }
-  if (!res.ok) {
+  if (res.status < 200 || res.status >= 300) {
     const err = (data as { error?: ApiError } | null)?.error;
     throw new RequestError(err?.message ?? `Request failed with HTTP ${res.status}`, res.status, err);
   }
